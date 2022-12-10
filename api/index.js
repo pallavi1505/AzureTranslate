@@ -1,12 +1,23 @@
 const express = require('express');
 const path = require('path');
-const app = express();
+const bodyParser = require('body-parser');
 const port = 3000;
-require("dotenv").config();
 const axios = require('axios').default;
 const { v4: uuidv4 } = require('uuid');
 
-app.get('/', function(req, res) {
+require("dotenv").config();
+const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
+app.use(express.static(path.join(__dirname, 'build')))
+
+app.get("/", async (req,re) => {
+    res.sendFile(path.join(__dirname,"build","index.html"))
+})
+
+
+app.get('/translate', function(req, res) {
     axios({
         baseURL: process.env.endPoint,
         url: '/translate',
@@ -20,15 +31,27 @@ app.get('/', function(req, res) {
         },
         params: {
             'api-version': '3.0',
-            'from': 'en',
-            'to': ['hi']
+            'from': req.query.from,
+            'to': req.query.to
         },
         data: [{
-            'text': 'sau'
+            'text': req.query.text
         }],
         responseType: 'json'
     }).then(function(response){
-        res.send(JSON.stringify(response.data, null, 4));
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+        res.send(JSON.stringify(response.data[0].translations[0]));
+        // res.send(JSON.stringify(response.data));
+
+    }).catch(
+        function (error) {
+            if (error.response) {  
+                res.header("Access-Control-Allow-Origin", "*");
+                res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+                let errorObj = {"message":"Please correct the input"}
+                res.status(error.response.status).send(errorObj);   
+            }    
     })
 });
 
